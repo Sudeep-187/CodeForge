@@ -1,0 +1,87 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: codeforge-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: codeforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  judge0-db:
+    image: postgres:15
+    container_name: judge0-db
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    ports:
+      - "5433:5432"
+    volumes:
+      - judge0-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  judge0-redis:
+    image: redis:7
+    container_name: judge0-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-server
+    ports:
+      - "2358:2358"
+    environment:
+      JUDGE0_REDIS_HOST: judge0-redis
+      JUDGE0_REDIS_PORT: 6379
+      JUDGE0_POSTGRES_HOST: judge0-db
+      JUDGE0_POSTGRES_PORT: 5432
+      JUDGE0_POSTGRES_USER: judge0
+      JUDGE0_POSTGRES_PASSWORD: judge0
+      JUDGE0_POSTGRES_DB: judge0
+      RAILS_ENV: production
+      RAILS_SERVE_STATIC_FILES: "true"
+      JUDGE0_ALLOW_CPU_TIME_LIMIT: "true"
+      JUDGE0_ALLOW_CLOCK_TIME_LIMIT: "true"
+      JUDGE0_ALLOW_MAX_MEMORY_LIMIT: "true"
+      JUDGE0_ALLOW_MAX_STACK_LIMIT: "true"
+      JUDGE0_ALLOW_MAX_PROCESSES_AND_OR_THREADS_LIMIT: "true"
+      JUDGE0_ALLOW_ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT: "true"
+      JUDGE0_ALLOW_ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT: "true"
+      JUDGE0_ALLOW_MAX_FILE_SIZE_LIMIT: "true"
+      JUDGE0_ALLOW_NUMBER_OF_RUNS_LIMIT: "true"
+      JUDGE0_ALLOW_REDIRECT_STDERR_TO_STDOUT_LIMIT: "true"
+      JUDGE0_ALLOW_TRUNCATE_STDOUT_AND_STDERR_LIMIT: "true"
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  judge0-db-data:

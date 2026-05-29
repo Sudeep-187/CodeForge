@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts    Account[]
+  sessions    Session[]
+  progress    UserProgress[]
+  submissions Submission[]
+  streak      Streak?
+  profile     Profile?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Profile {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  bio      String?
+  github   String?
+  linkedin String?
+  college  String?
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Problem {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  title       String
+  description String
+  difficulty  Difficulty
+  category    String
+  tags        String[]
+  companies   String[]
+  hints       String[]
+  solution    String?
+  constraints String
+  examples    Json
+  starterCode Json
+  testCases   TestCase[]
+  submissions Submission[]
+  progress    UserProgress[]
+  order       Int
+  sheetId     String?
+  sheet       Sheet?       @relation(fields: [sheetId], references: [id])
+  createdAt   DateTime     @default(now())
+}
+
+model TestCase {
+  id        String  @id @default(cuid())
+  problemId String
+  input     String
+  output    String
+  isHidden  Boolean @default(false)
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+}
+
+model Submission {
+  id        String           @id @default(cuid())
+  userId    String
+  problemId String
+  language  String
+  code      String
+  status    SubmissionStatus
+  runtime   Int?
+  memory    Int?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem   Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum SubmissionStatus {
+  ACCEPTED
+  WRONG_ANSWER
+  TIME_LIMIT_EXCEEDED
+  RUNTIME_ERROR
+  COMPILATION_ERROR
+}
+
+model Sheet {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  description String
+  problems    Problem[]
+  createdAt   DateTime  @default(now())
+}
+
+model UserProgress {
+  id        String          @id @default(cuid())
+  userId    String
+  problemId String?
+  topicId   String?
+  type      ProgressType
+  status    ProgressStatus
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem   Problem?        @relation(fields: [problemId], references: [id])
+  topic     TheoryTopic?    @relation(fields: [topicId], references: [id])
+  @@unique([userId, problemId])
+  @@unique([userId, topicId])
+}
+
+enum ProgressType {
+  DSA_PROBLEM
+  THEORY_TOPIC
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  REVISIT
+}
+
+model Subject {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  description String
+  icon        String
+  color       String
+  order       Int
+  topics      TheoryTopic[]
+}
+
+model TheoryTopic {
+  id        String         @id @default(cuid())
+  subjectId String
+  slug      String         @unique
+  title     String
+  content   String
+  order     Int
+  quizzes   Quiz[]
+  progress  UserProgress[]
+  subject   Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+}
+
+model Quiz {
+  id          String       @id @default(cuid())
+  topicId     String
+  question    String
+  options     String[]
+  answer      Int
+  explanation String?
+  topic       TheoryTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+}
+
+model Streak {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  current    Int      @default(0)
+  longest    Int      @default(0)
+  lastActive DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
