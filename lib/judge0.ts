@@ -1,7 +1,8 @@
 import { LANGUAGE_IDS, JUDGE0_FALLBACK_ERROR } from "./constants";
 
-const JUDGE0_API_URL = process.env.JUDGE0_API_URL || "http://localhost:2358";
-const JUDGE0_API_KEY = process.env.JUDGE0_API_KEY || "";
+const RAPIDAPI_URL = process.env.JUDGE0_API_URL || "";
+const RAPIDAPI_KEY = process.env.JUDGE0_API_KEY || "";
+const PUBLIC_JUDGE0_URL = "https://ce.judge0.com";
 
 interface Judge0Status {
   id: number;
@@ -33,15 +34,19 @@ interface TestResult {
 }
 
 async function callJudge0(code: string, languageId: number, stdin: string): Promise<Judge0Result> {
+  const useRapidAPI = !RAPIDAPI_URL.includes("ce.judge0.com") && !!RAPIDAPI_KEY;
+  const baseUrl = useRapidAPI ? RAPIDAPI_URL : PUBLIC_JUDGE0_URL;
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
 
-  if (JUDGE0_API_KEY) {
-    headers["X-RapidAPI-Key"] = JUDGE0_API_KEY;
+  if (useRapidAPI) {
+    headers["X-RapidAPI-Key"] = RAPIDAPI_KEY;
+    headers["X-RapidAPI-Host"] = new URL(RAPIDAPI_URL).hostname;
   }
 
-  const response = await fetch(`${JUDGE0_API_URL}/submissions?wait=true`, {
+  const response = await fetch(`${baseUrl}/submissions?wait=true`, {
     method: "POST",
     headers,
     body: JSON.stringify({

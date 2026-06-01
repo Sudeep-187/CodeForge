@@ -10,7 +10,6 @@ import {
   ListOrdered,
   User,
   Menu,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatsGrid } from "@/components/dashboard/StatsGrid";
@@ -28,104 +27,50 @@ const SIDEBAR_ITEMS = [
   { label: "Profile", icon: User, section: "profile" },
 ];
 
-function generateMockChartData() {
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return Array.from({ length: 30 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (29 - i));
-    const dayLabel = `${days[date.getDay()]} ${date.getDate()}`;
-    return {
-      day: dayLabel,
-      count: Math.floor(Math.random() * 8) + 1,
-    };
-  });
-}
-
-function generateMockSubjects() {
-  return [
-    { name: "Operating Systems", completed: 8, total: 12 },
-    { name: "Database Management", completed: 10, total: 10 },
-    { name: "Computer Networks", completed: 5, total: 10 },
-    { name: "Compiler Design", completed: 3, total: 8 },
-    { name: "Data Structures", completed: 15, total: 20 },
-    { name: "System Design", completed: 2, total: 6 },
-  ];
-}
-
-function generateMockCalendarData() {
-  const data: { date: string; count: number }[] = [];
-  for (let i = 89; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    data.push({
-      date: date.toISOString().split("T")[0],
-      count: Math.random() > 0.5 ? Math.floor(Math.random() * 12) : 0,
-    });
-  }
-  return data;
-}
-
-function generateMockSubmissions() {
-  const statuses = ["ACCEPTED", "WRONG_ANSWER", "TIME_LIMIT_EXCEEDED", "RUNTIME_ERROR", "COMPILATION_ERROR"];
-  const languages = ["cpp", "java", "python", "javascript", "go", "rust"];
-  const problems = [
-    { title: "Two Sum", slug: "two-sum" },
-    { title: "Valid Parentheses", slug: "valid-parentheses" },
-    { title: "Merge Sort", slug: "merge-sort" },
-    { title: "Binary Tree Level Order Traversal", slug: "binary-tree-level-order-traversal" },
-    { title: "LRU Cache", slug: "lru-cache" },
-    { title: "Longest Substring Without Repeating Characters", slug: "longest-substring-without-repeating-characters" },
-  ];
-  return Array.from({ length: 10 }, (_, i) => {
-    const problem = problems[i % problems.length];
-    const hoursAgo = i * 3 + Math.floor(Math.random() * 3);
-    const date = new Date();
-    date.setHours(date.getHours() - hoursAgo);
-    return {
-      id: `mock-sub-${i}`,
-      problemTitle: problem.title,
-      problemSlug: problem.slug,
-      status: statuses[i % statuses.length],
-      language: languages[i % languages.length],
-      createdAt: date.toISOString(),
-    };
-  });
-}
-
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const [stats, setStats] = useState<DashboardStats>({
-    problemsSolved: 47,
-    currentStreak: 12,
-    subjectsCompleted: 2,
-    totalSubmissions: 156,
+    problemsSolved: 0,
+    currentStreak: 0,
+    subjectsCompleted: 0,
+    totalSubmissions: 0,
   });
-  const [chartData] = useState(generateMockChartData);
-  const [subjects] = useState(generateMockSubjects);
-  const [calendarData] = useState(generateMockCalendarData);
-  const [submissions] = useState(generateMockSubmissions);
+  const [chartData, setChartData] = useState<{ day: string; count: number }[]>([]);
+  const [subjects, setSubjects] = useState<{ name: string; completed: number; total: number }[]>([]);
+  const [calendarData, setCalendarData] = useState<{ date: string; count: number }[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch("/api/user/streak");
-        const streakData = await res.json();
+        const res = await fetch("/api/user/stats");
         if (res.ok) {
-          setStats((prev) => ({ ...prev, currentStreak: streakData.current }));
+          const data = await res.json();
+          setStats(data.stats);
+          setChartData(data.chartData);
+          setSubjects(data.subjectProgress);
+          setCalendarData(data.calendarData);
+          setSubmissions(data.submissions);
         }
       } catch {
-        // fallback to mock data
+        // silently fail - keep zeros
+      } finally {
+        setLoading(false);
       }
     }
     fetchStats();
   }, []);
 
-  if (status === "loading") {
+  if (status === "loading" || loading) {
     return (
       <div className="min-h-screen bg-[#0c0c0c] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-[#71717a] text-sm">Loading your dashboard...</span>
+        </div>
       </div>
     );
   }
